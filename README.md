@@ -12,7 +12,7 @@ The repo includes code for performing real time object detection using ssd mobil
 `python object_detection.py`
 
 ## References
-- (https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/camera.html)
+- https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/camera.html
 - [Tensorflow Object Detection API](https://github.com/tensorflow/models)
 
 See [LICENSE](https://github.com/rktayal/object-detection-demo/LICENSE) for details
