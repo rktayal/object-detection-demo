@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from queue import Queue
 from threading import Thread
-from utils.app_utils import FPS, HLSVideoStream, WebCamVideoStream, draw_boxes_and_labels
+from imutil.app_utils import FPS, HLSVideoStream, WebCamVideoStream, draw_boxes_and_labels
 from object_detection.utils import label_map_util
 
 
@@ -82,6 +82,10 @@ if __name__ == "__main__":
     PATH_TO_LABELS = "./model/mscoco_label_map.pbtxt"
     NUM_CLASSES = 90
     parser = argparse.ArgumentParser()
+    parser.add_argument('-n', '--num-frames', dest="num_frames", type=int, default=100,
+            help="# of frames to loop over FPS test")
+    parser.add_argument('-d', '--display', dest="display", type=int, default=-1,
+            help="whether or not frame should be displayed")
     parser.add_argument('-strin', '--stream-input', dest="stream_in", action='store', type=str, default=None)
     parser.add_argument('-src', '--source', dest='video_source', type=int,
                         default=0, help='Device index of the camera.')
@@ -108,7 +112,7 @@ if __name__ == "__main__":
 
     fps = FPS().start()
     t = time.time()
-    while True:
+    while fps._numFrames < args.num_frames:
         frame = video_cap.read()
         input_q.put(frame)
 
@@ -120,19 +124,20 @@ if __name__ == "__main__":
             rec_points = data['rect_points']
             class_names = data['class_names']
             class_colors = data['class_colors']
-            for point, name, color in zip(rec_points, class_names, class_colors):
-                cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3) 
-                cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), (int(point['xmin'] * args.width) + len(name[0]) * 6, int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
-                cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font, 0.3, (0, 0, 0), 1)
+            if args.display > 0:
+                for point, name, color in zip(rec_points, class_names, class_colors):
+                    cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3) 
+                    cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), (int(point['xmin'] * args.width) + len(name[0]) * 6, int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
+                    cv2.putText(frame, name[0], (int(point['xmin'] * args.width), int(point['ymin'] * args.height)), font, 0.3, (0, 0, 0), 1)
 
-            if args.stream_out:
-                print ('streaming somewhere else')
-            else:
-                cv2.imshow('Video', frame)
+                if args.stream_out:
+                    print ('streaming somewhere else')
+                else:
+                    cv2.imshow('Video', frame)
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
         fps.update()
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
     fps.stop()
     print ('[INFO] elapsed time (total): {:.2f}'.format(fps.elapsed()))
     print ('[INFO] approx. FPS : {:.2f}'.format(fps.fps())) 
