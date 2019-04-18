@@ -1,5 +1,6 @@
 # Object-Detection-Demo
 Demonstrates on how to get started with real time object detection using ssd mobilenet model with tensorflow and OpenCV.
+Thanks to [Dat Tran](https://towardsdatascience.com/@datitran) for his article. Piece of code is taken from his work.
 
 ## Requirements
 - [Python 3.5](https://www.python.org/download/releases/3.0/)
