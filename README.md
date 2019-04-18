@@ -41,24 +41,76 @@ def load_label_map(PATH_TO_LABELS, NUM_CLASSES):
 ```
 ## Run Application
 On running the application, it will take the input stream of frames from your webcam and perform the inference.
-To start the application, execute the below command
-`python object_detection.py`
+To start the application, execute the below command:
+```
+python object_detection.py
+```
+Once the application starts, it will read frames from the webcam and perform inference on it.
 Now the frames processed per second would be really low (around 4-5fps on my CPU). This is due to the fact 
 that I/O bounded operation of frame reading (from the webcam) and the inference on that frame
 is happening sequentially, i.e. both operations are performed using the same thread. Now the frame reading 
 task is done via functions provided by OpenCV which are heavily I/O bounded. Meaning the CPU is sitting idle 
-for longer times as thread is in sleeping state or performing an I/O operation. So To address this issue,
+for longer times as thread is in sleeping state or performing an I/O operation. So to address this issue,
 and hence to increase the fps, we can perform the two operations on seperate threads. One thread will be solely dedicated 
-for frame reading while the other for inference. Pyhton provides the `multiprocessing` module which does most work of managing
+for frame reading while the other for inference. Python provides the `multiprocessing` module which does most work of managing
 multiple processes and threads. You can read about it from [here](https://docs.python.org/3.5/library/multiprocessing.html)
-Using threading will imporve the fps a lot. If you want to read more about threading, [Adrian Rosebrock](http://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/) wrote a nice article 
-about it. 
+`object_detection_multithreaded.py` has the above implementation. 
+```
+class WebCamVideoStream:
+	def __init__(self, src, width, height):
+		# initialize the video camera stream and read the first frame
+		# from the stream
+		self.stream = cv2.VideoCapture(src)
+		self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+		self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+		(self.grabbed, self.frame) = self.stream.read()
+
+		# initialize the variable used to indicate if the thread should
+		# be stopped
+		self.stopped = False
+
+	def start(self):
+		# start the thread to read frames from the video stream
+		Thread(target=self.update, args=()).start()
+		return self
+
+	def update(self):
+		# keep looping infinitely until the thread is stopped
+		while True:
+			# if the thread indicator variable is set, stop the thread
+			if self.stopped:
+				return
+
+			# otherwise, read the next frame from the stream
+			(self.grabbed, self.frame) = self.stream.read()
+
+	def read(self):
+		# return the frame most recently read
+		return self.frame
+
+	def stop(self):
+		# indicate that the thread should be stopped
+		self.stopped = True
+```
+To perform frame reading in separate thread, you can instantiate an object of above class and call the `read` method to get the frame
+```
+video_cap = WebCamVideoStream(src=args.video_source,
+                                   width=args.width,
+                                   height=args.height).start()
+frame = video_cap.read()
+```
+Above class is defined in `imutil/app_utils.py`. You can refer it for better understanding.
+Therefore `object_detection_multithreaded.py` maintains a two queue, one for input and the other for output. input frames are enqueued in the `input queue`
+from the frame reading thread while the 
+inference thread grabs the frame from the `input queue`, performs inference on it and push the result in the `output queue`.
+Using threading will imporve the fps a lot. If you want to read more about threading, [this article by Adrian Rosebrock](http://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/)
+is a nice place to start.
 To try the multithreaded code, you can execute:
 `python object_detection_multithreaded`
 There are other ways to improve the fps, like:
 - Reducing the frame size (height & width)
 - Loading model to multiple processes
-You can also refer the `object_detection_multithreaded` code
+You can try out these options as well.
 
 ## Conclusions
 It is pretty neat and simple to perform object detection using the TensorFlow Object Detection API using some pre-trained model.
